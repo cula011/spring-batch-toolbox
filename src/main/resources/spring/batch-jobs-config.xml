@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:batch="http://www.springframework.org/schema/batch"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+            http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd">
+
+    <batch:job id="csvFileToDatabaseJob">
+        <batch:step id="loadCsvIntoDb">
+            <batch:tasklet allow-start-if-complete="false" start-limit="1">
+                <batch:chunk reader="csvFileReader" writer="jdbcBatchWriter" commit-interval="1"/>
+            </batch:tasklet>
+        </batch:step>
+    </batch:job>
+
+    <!-- ItemReader(s)-->
+    <bean id="csvFileReader" class="org.springframework.batch.item.file.FlatFileItemReader"
+          p:resource="#{jobParameters['address.resource.path']}" scope="step">
+        <property name="lineMapper">
+            <bean id="lineMapper" class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+                <property name="lineTokenizer">
+                    <bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer"
+                          p:delimiter=","
+                          p:names="streetNumber, streetName, streetType,  suburb, city, state, postcode, country"/>
+                </property>
+                <property name="fieldSetMapper">
+                    <bean class="org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper"
+                          p:prototypeBeanName="address"/>
+                </property>
+            </bean>
+        </property>
+    </bean>
+
+    <!-- ItemWriter(s) -->
+    <bean id="jdbcBatchWriter" class="org.springframework.batch.item.database.JdbcBatchItemWriter"
+          p:dataSource-ref="dataSource"
+          p:sql="insert into ADDRESS (streetNumber, streetName, streetType,  suburb, city, state, postcode, country) values (:streetNumber , :streetName , :streetType , :suburb ,:city, :state, :postcode, :country)">
+        <property name="itemSqlParameterSourceProvider">
+            <bean class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider"/>
+        </property>
+    </bean>
+
+    <!-- Domain Model-->
+    <bean id="address" class="org.cula011.spring.batch.domain.Address"/>
+
+</beans>
